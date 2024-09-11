@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 import logging
 import easyocr
-import keras_ocr
+import pytesseract
 import numpy as np
 import os
 
@@ -26,6 +26,7 @@ os.environ['EASYOCR_MODULE_PATH'] = MODEL_DIR
 
 # Load the YOLO model
 model = YOLO('yolov8n.pt')
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 @app.get("/")
 async def health_check():
@@ -127,23 +128,21 @@ async def perform_ocr_light(file: UploadFile = File(...)):
         contents = await file.read()
         image = Image.open(io.BytesIO(contents)).convert("RGB")
         
-        # Convert PIL Image to numpy array
-        image_np = np.array(image)
+        # Perform OCR with pytesseract
+        text = pytesseract.image_to_string(image)
         
-        # Perform OCR with keras-ocr
-        predictions = keras_ocr.pipeline.Pipeline().recognize([image_np])
-        
-        # Extract text from predictions
-        text = ' '.join([word for _, word in predictions[0]])
-        
-        return JSONResponse(content={"text": text})
+        return JSONResponse(content={"text": text.strip()})
     
     except Exception as e:
         print(f"Error in perform_ocr_light: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Print the model download locations
+print(f"EasyOCR models are stored in: {MODEL_DIR}")
+
 # Print the model download location
 print(f"EasyOCR models are stored in: {MODEL_DIR}")
+
 
 if __name__ == "__main__":
     import uvicorn
