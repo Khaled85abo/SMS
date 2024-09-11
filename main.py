@@ -6,6 +6,7 @@ import io
 import logging
 import easyocr
 import numpy as np
+import os
 
 app = FastAPI()
 
@@ -13,7 +14,14 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Set the model directory in your project
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "ocr_model")
 
+# Ensure the model directory exists
+os.makedirs(MODEL_DIR, exist_ok=True)
+
+# Set the environment variable for model download location
+os.environ['EASYOCR_MODULE_PATH'] = MODEL_DIR
 
 # Load the YOLO model
 model = YOLO('yolov8n.pt')
@@ -88,8 +96,8 @@ async def detect_objects(file: UploadFile = File(...)):
         logger.error(f"Error in detect_objects: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Initialize the OCR reader
-reader = easyocr.Reader(['en'])  # Initialize for English
+# Initialize the OCR reader with the custom model directory
+reader = easyocr.Reader(['en'], model_storage_directory=MODEL_DIR, download_enabled=True)
 
 @app.post("/ocr/")
 async def perform_ocr(file: UploadFile = File(...)):
@@ -109,8 +117,11 @@ async def perform_ocr(file: UploadFile = File(...)):
         return JSONResponse(content={"text": text})
     
     except Exception as e:
-        logger.error(f"Error in perform_ocr: {e}")
+        print(f"Error in perform_ocr: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# Print the model download location
+print(f"EasyOCR models are stored in: {MODEL_DIR}")
 
 if __name__ == "__main__":
     import uvicorn
