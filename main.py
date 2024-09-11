@@ -29,16 +29,26 @@ async def detect_objects(file: UploadFile = File(...)):
         boxes = result.boxes
         for box in boxes:
             x1, y1, x2, y2 = box.xyxy[0].tolist()
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)  # Convert to integers
             class_id = int(box.cls)
             conf = float(box.conf)
             label = f"{result.names[class_id]} {conf:.2f}"
             
-            # Draw bounding box
-            draw.rectangle([x1, y1, x2, y2], outline="red", width=2)
+            # Ensure coordinates are valid
+            x1, x2 = min(x1, x2), max(x1, x2)
+            y1, y2 = min(y1, y2), max(y1, y2)
             
-            # Draw label
-            draw.rectangle([x1, y1, x1 + len(label) * 7, y1 - 20], fill="red")
-            draw.text((x1, y1 - 20), label, fill="white", font=font)
+            try:
+                # Draw bounding box
+                draw.rectangle([x1, y1, x2, y2], outline="red", width=2)
+                
+                # Draw label
+                text_width = draw.textlength(label, font=font)
+                draw.rectangle([x1, y1, x1 + text_width, y1 - 20], fill="red")
+                draw.text((x1, y1 - 20), label, fill="white", font=font)
+            except ValueError as e:
+                print(f"Error drawing box: {e}")
+                continue
     
     # Save the image to a bytes buffer
     img_byte_arr = io.BytesIO()
