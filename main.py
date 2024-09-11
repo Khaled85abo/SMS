@@ -4,13 +4,16 @@ from ultralytics import YOLO
 from PIL import Image, ImageDraw, ImageFont
 import io
 import logging
-import pytesseract
+import easyocr
+import numpy as np
 
 app = FastAPI()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
 
 # Load the YOLO model
 model = YOLO('yolov8n.pt')
@@ -85,15 +88,29 @@ async def detect_objects(file: UploadFile = File(...)):
         logger.error(f"Error in detect_objects: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Initialize the OCR reader
+reader = easyocr.Reader(['en'])  # Initialize for English
+
 @app.post("/ocr/")
 async def perform_ocr(file: UploadFile = File(...)):
-    contents = await file.read()
-    image = Image.open(io.BytesIO(contents)).convert("RGB")
+    try:
+        contents = await file.read()
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+        
+        # Convert PIL Image to numpy array
+        image_np = np.array(image)
+        
+        # Perform OCR
+        result = reader.readtext(image_np)
+        
+        # Extract text from results
+        text = ' '.join([item[1] for item in result])
+        
+        return JSONResponse(content={"text": text})
     
-    # Perform OCR
-    text = pytesseract.image_to_string(image)
-    
-    return JSONResponse(content={"text": text})
+    except Exception as e:
+        logger.error(f"Error in perform_ocr: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
