@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 import logging
 import easyocr
+import keras_ocr
 import numpy as np
 import os
 
@@ -118,6 +119,27 @@ async def perform_ocr(file: UploadFile = File(...)):
     
     except Exception as e:
         print(f"Error in perform_ocr: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/ocr-light/")
+async def perform_ocr_light(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+        
+        # Convert PIL Image to numpy array
+        image_np = np.array(image)
+        
+        # Perform OCR with keras-ocr
+        predictions = keras_ocr.pipeline.Pipeline().recognize([image_np])
+        
+        # Extract text from predictions
+        text = ' '.join([word for _, word in predictions[0]])
+        
+        return JSONResponse(content={"text": text})
+    
+    except Exception as e:
+        print(f"Error in perform_ocr_light: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Print the model download location
