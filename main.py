@@ -41,16 +41,19 @@ async def detect_objects(file: UploadFile = File(...)):
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
                     print(x1, y1, x2, y2)
                     x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)  # Convert to integers
-                    
-                    # Ensure coordinates are within image boundaries
+                    # Ensure coordinates are valid and within image boundaries
                     x1 = max(0, min(x1, width - 1))
                     x2 = max(0, min(x2, width - 1))
                     y1 = max(0, min(y1, height - 1))
                     y2 = max(0, min(y2, height - 1))
                     
-                    # Ensure x1 < x2 and y1 < y2 (rectangles must have non-zero dimensions)
-                    if x1 >= x2 or y1 >= y2:
-                        logger.warning(f"Skipping invalid box: x1={x1}, y1={y1}, x2={x2}, y2={y2}")
+                    # Ensure x1 < x2 and y1 < y2
+                    x1, x2 = min(x1, x2), max(x1, x2)
+                    y1, y2 = min(y1, y2), max(y1, y2)
+                    
+                    # Skip if the box has no area
+                    if x1 == x2 or y1 == y2:
+                        logger.warning(f"Skipping zero-area box: x1={x1}, y1={y1}, x2={x2}, y2={y2}")
                         continue
                     
                     class_id = int(box.cls)
@@ -69,7 +72,6 @@ async def detect_objects(file: UploadFile = File(...)):
                 except Exception as e:
                     logger.error(f"Error processing box: {e}")
                     continue
-
         
         # Save the image to a bytes buffer
         img_byte_arr = io.BytesIO()
