@@ -15,8 +15,10 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
 # Set the model directory in your project
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "ocr_model")
+MODEL_DIR = os.path.join(current_dir, "ocr_model")
+tesseract_path = os.path.join(current_dir, 'Tesseract-OCR', 'tesseract.exe')
 
 # Ensure the model directory exists
 os.makedirs(MODEL_DIR, exist_ok=True)
@@ -26,7 +28,7 @@ os.environ['EASYOCR_MODULE_PATH'] = MODEL_DIR
 
 # Load the YOLO model
 model = YOLO('yolov8n.pt')
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
 @app.get("/")
 async def health_check():
