@@ -1,9 +1,10 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from ultralytics import YOLO
 from PIL import Image, ImageDraw, ImageFont
 import io
 import logging
+import pytesseract
 
 app = FastAPI()
 
@@ -83,6 +84,16 @@ async def detect_objects(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Error in detect_objects: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/ocr/")
+async def perform_ocr(file: UploadFile = File(...)):
+    contents = await file.read()
+    image = Image.open(io.BytesIO(contents)).convert("RGB")
+    
+    # Perform OCR
+    text = pytesseract.image_to_string(image)
+    
+    return JSONResponse(content={"text": text})
 
 if __name__ == "__main__":
     import uvicorn
