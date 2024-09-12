@@ -8,6 +8,7 @@ import easyocr
 import pytesseract
 import numpy as np
 import os
+import base64
 
 app = FastAPI()
 
@@ -49,14 +50,14 @@ async def detect_objects(file: UploadFile = File(...)):
         
         width, height = image.size
         
+        detected_objects = []
+        
         for result in results:
             boxes = result.boxes
             for box in boxes:
                 try:
-                    print(box)
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
-                    print(x1, y1, x2, y2)
-                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)  # Convert to integers
+                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                     # Ensure coordinates are valid and within image boundaries
                     x1 = max(0, min(x1, width - 1))
                     x2 = max(0, min(x2, width - 1))
@@ -85,6 +86,12 @@ async def detect_objects(file: UploadFile = File(...)):
                     draw.rectangle([x1, y1 - text_height, x1 + text_width, y1], fill="red")
                     draw.text((x1, y1 - text_height), label, fill="white", font=font)
                     
+                    detected_objects.append({
+                        "class": result.names[class_id],
+                        "confidence": round(conf, 2),
+                        "bbox": [x1, y1, x2, y2]
+                    })
+                    
                 except Exception as e:
                     logger.error(f"Error processing box: {e}")
                     continue
@@ -94,7 +101,14 @@ async def detect_objects(file: UploadFile = File(...)):
         image.save(img_byte_arr, format='PNG')
         img_byte_arr.seek(0)
         
-        return StreamingResponse(img_byte_arr, media_type="image/png")
+        # Encode the image as base64
+        encoded_image = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+        
+        # Prepare the response
+        return JSONResponse(content={
+            "image": encoded_image,
+            "objects": detected_objects
+        })
     
     except Exception as e:
         logger.error(f"Error in detect_objects: {e}")
