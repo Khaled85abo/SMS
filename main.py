@@ -125,7 +125,8 @@ async def detect_objects(file: UploadFile = File(...)):
         
         # Draw bounding boxes and labels on the image
         draw = ImageDraw.Draw(image)
-        font = ImageFont.load_default()
+        # Use a larger font size (e.g., 36)
+        font = ImageFont.truetype("arial.ttf", 20)  # You may need to adjust the font path
         
         width, height = image.size
         
@@ -133,10 +134,8 @@ async def detect_objects(file: UploadFile = File(...)):
             boxes = result.boxes
             for box in boxes:
                 try:
-                    print(box)
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
-                    print(x1, y1, x2, y2)
-                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)  # Convert to integers
+                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                     # Ensure coordinates are valid and within image boundaries
                     x1 = max(0, min(x1, width - 1))
                     x2 = max(0, min(x2, width - 1))
@@ -157,13 +156,14 @@ async def detect_objects(file: UploadFile = File(...)):
                     label = f"{result.names[class_id]} {conf:.2f}"
                     
                     # Draw bounding box
-                    draw.rectangle([x1, y1, x2, y2], outline="red", width=2)
+                    draw.rectangle([x1, y1, x2, y2], outline="red", width=4)  # Increased width for visibility
                     
-                    # Draw label
-                    text_width = draw.textlength(label, font=font)
-                    text_height = font.size
-                    draw.rectangle([x1, y1 - text_height, x1 + text_width, y1], fill="red")
-                    draw.text((x1, y1 - text_height), label, fill="white", font=font)
+                    # Draw label with larger font
+                    text_bbox = draw.textbbox((x1, y1), label, font=font)
+                    text_width = text_bbox[2] - text_bbox[0]
+                    text_height = text_bbox[3] - text_bbox[1]
+                    draw.rectangle([x1, y1 - text_height - 5, x1 + text_width + 5, y1], fill="red")
+                    draw.text((x1 + 2, y1 - text_height - 3), label, fill="white", font=font)
                     
                 except Exception as e:
                     logger.error(f"Error processing box: {e}")
